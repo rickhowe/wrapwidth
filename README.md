@@ -17,7 +17,7 @@ line.
 
 ![sample2](sample2.png)
 
-While *wrapwidth* is enabled, those blank spaces will be adjusted with wrap
+While *wrapwidth* is enabled, those virtual spaces will be adjusted with wrap
 related (`linebreak`, `breakat`, `showbreak`, `breakindent`,
 `breakindentopt`), width related (`number`, `relativenumber`, `numberwidth`,
 `signcolumn`, `foldcolumn`), and tab related (`tabstop`, `vartabstop`)
@@ -38,3 +38,8 @@ post-9.0 patches and nvim 0.10.0.
     - N > 0: a text width from left edge of a text, like `textwidth`
     - N < 0: a wrap margin from right edge of a window, like `wrapmargin`
     - N = 0: disables the *wrapwidth*
+
+#### Option
+
+* `b:wrapwidth_hl`, `g:wrapwidth_hl`
+  * A highlight group name to make *wrapwidth* virtual spaces visible.

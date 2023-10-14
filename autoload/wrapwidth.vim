@@ -1,7 +1,7 @@
 " wrapwidth.vim : Wraps long lines visually at a specific column
 "
-" Last Change: 2023/10/09
-" Version:     1.0
+" Last Change: 2023/10/14
+" Version:     1.1
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 " Copyright:   (c) 2023 by Rick Howe
 " License:     MIT
@@ -11,72 +11,73 @@ set cpo&vim
 
 let s:ww = 'wrapwidth'
 
-function! wrapwidth#ToggleWrapwidth(ww) abort
-  let cw = win_getid()
-  if a:ww == getwinvar(cw, s:ww, 0) | return | endif
-  for wn in win_findbuf(winbufnr(cw))
-    if a:ww == 0
-      let wv = getwinvar(wn, '')
-      if has_key(wv, s:ww) | unlet wv[s:ww] | endif
-    else
-      call setwinvar(wn, s:ww, a:ww)
+function! wrapwidth#WrapWidth(ww) abort
+  if type(a:ww) == type(0)
+    let ww = getbufvar(bufnr('%'), s:ww, 0)
+    if a:ww != ww
+      let zz = (a:ww != 0) * 2 + (ww != 0)      " 1:delete, 2:add, 3:change
+      if 0 < zz | call s:ShowWrapWidth(a:ww, zz) | endif
+      call s:SetEvent()
     endif
-  endfor
-  call s:SetEvent()
-  call s:Wrapwidth()
+  else
+    echohl ErrorMsg | echo 'argument is not number' | echohl None
+  endif
 endfunction
 
-function! s:Wrapwidth() abort
+function! s:ShowWrapWidth(ww, zz) abort
   let cw = win_getid() | let cb = winbufnr(cw)
-  call s:Prop_remove(cb)
-  let ww = getwinvar(cw, s:ww, 0)
-  if ww == 0 | return | endif
-  let wi = getwininfo(cw)[0]
-  let tl = wi.width - wi.textoff
-  let tw = (0 < ww) ? ww : tl + ww
-  if &wrap && 0 < tw && tw < tl
-    let ex = matchstr(&listchars, 'extends:\zs.\ze')
-    if !&list || empty(ex) | let ex = ' ' | endif
-    if &linebreak
-      let kp = '\V\%\(' . join(split(&breakat, '\zs'), '\|') . '\)'
-    endif
-    for ln in range(1, line('$'))
-      let tx = getline(ln)
-      let kl = []
+  if a:zz == 1 || a:zz == 3         " delete or change
+    let bv = getbufvar(cb, '') | if has_key(bv, s:ww) | unlet bv[s:ww] | endif
+    call s:Prop_remove(cb)
+  endif
+  call s:Prop_type(cb, a:zz)
+  if a:zz == 2 || a:zz == 3         " add or change
+    call setbufvar(cb, s:ww, a:ww)
+    let wi = getwininfo(cw)[0]
+    let tl = wi.width - wi.textoff
+    let tw = (0 < a:ww) ? a:ww : tl + a:ww
+    let sw = tl - tw
+    if &wrap && 0 < tw && 0 < sw
+      let ex = matchstr(&listchars, 'extends:\zs.\ze')
+      if !&list || empty(ex) | let ex = ' ' | endif
       if &linebreak
-        let ks = 0
-        while 1
-          let ks = matchend(tx, kp, ks)
-          if ks != -1 | let kl += [ks] | else | break | endif
-        endwhile
+        let kp = '\V\%\(' . join(split(&breakat, '\zs'), '\|') . '\)'
       endif
-      let vc = tw + 1
-      while vc < virtcol([ln, '$'])
-        let bc = virtcol2col(cw, ln, vc)
-        if (!&list || &listchars =~ 'tab') && tx[bc - 1] == "\t" ||
+      let tn = tl + ((&cpoptions =~ 'n' &&
+                            \(&number || &relativenumber)) ? &numberwidth : 0)
+      for ln in range(1, line('$'))
+        let tx = getline(ln)
+        let kl = []
+        if &linebreak
+          let ks = 0
+          while 1
+            let ks = matchend(tx, kp, ks)
+            if ks != -1 | let kl += [ks] | else | break | endif
+          endwhile
+        endif
+        let vc = tw + 1
+        while vc < virtcol([ln, '$'])
+          let bc = virtcol2col(cw, ln, vc)
+          if (!&list || &listchars =~ 'tab') && tx[bc - 1] == "\t" ||
                               \!empty(kl) && bc == virtcol2col(cw, ln, vc - 1)
-          let bc += 1
-        endif
-        if !empty(kl)
-          let ki = 0
-          while ki < len(kl) && kl[ki] < bc | let ki += 1 | endwhile
-          if 0 < ki | let bc = kl[ki - 1] + 1 | let kl = kl[ki :] | endif
-        endif
-        call s:Prop_add(cb, ln, bc,
-                              \repeat(ex, tl - tw - (virtcol([ln, bc]) - vc)))
-        let vc += (&cpoptions =~ 'n') ? wi.width : tl
-      endwhile
-    endfor
+            let bc += 1
+          endif
+          if !empty(kl)
+            let ki = 0
+            while ki < len(kl) && kl[ki] < bc | let ki += 1 | endwhile
+            if 0 < ki | let bc = kl[ki - 1] + 1 | let kl = kl[ki :] | endif
+          endif
+          call s:Prop_add(cb, ln, bc,
+                                  \repeat(ex, sw - (virtcol([ln, bc]) - vc)))
+          let vc += tn
+        endwhile
+      endfor
+    endif
   endif
 endfunction
 
 function! s:SetEvent() abort
-  let bl = []
-  for bi in getbufinfo()
-    if !empty(filter(bi.windows, 'getwinvar(v:val, s:ww, 0) != 0'))
-      let bl += [bi.bufnr]
-    endif
-  endfor
+  let bl = filter(range(1, bufnr('$')), 'getbufvar(v:val, s:ww, 0) != 0')
   let ac = ['augroup ' . s:ww, 'autocmd!']
   if !empty(bl)
     for [en, ev] in items({1: 'OptionSet', 2: 'WinResized', 3: 'TextChanged'})
@@ -114,19 +115,17 @@ function! s:CheckEvent(en) abort
   elseif a:en == 3      " TextChanged
     let wl += [cw]
   endif
-  if 1 < len(wl)
-    let ci = index(wl, cw)
-    if 0 <= ci | unlet wl[ci] | let wl += [cw] | endif
-  endif
+  " select one win per buf (in case of splitted)
+  let bw = {}
   for wn in wl
-    let ww = getwinvar(wn, s:ww, 0)
+    let bn = winbufnr(wn)
+    if !has_key(bw, bn) | let bw[bn] = [] | endif | let bw[bn] += [wn]
+  endfor
+  for [bn, wl] in items(bw)
+    let ww = getbufvar(eval(bn), s:ww, 0)
     if ww != 0
-      for wx in win_findbuf(winbufnr(wn))
-        if wn != wx && ww != getwinvar(wx, s:ww, 0)
-          call setwinvar(wx, s:ww, ww)
-        endif
-      endfor
-      call win_execute(wn, 'call s:Wrapwidth()')
+      call win_execute((index(wl, cw) != -1) ? cw : wl[-1],
+                                              \'call s:ShowWrapWidth(ww, 3)')
     endif
   endfor
 endfunction
@@ -134,9 +133,14 @@ endfunction
 if has('nvim')
   let s:ns = nvim_create_namespace(s:ww)
 
+  function! s:Prop_type(bn, zz) abort
+  endfunction
+
   function! s:Prop_add(bn, ln, co, tx) abort
+    let hl = get(b:, s:ww . '_hl', get(g:, s:ww . '_hl', ''))
+    if hlID(hl) == 0 | let hl = 'NonText' | endif
     call nvim_buf_set_extmark(a:bn, s:ns, a:ln - 1, a:co - 1,
-                  \#{virt_text: [[a:tx, 'NonText']], virt_text_pos: 'inline'})
+                        \#{virt_text: [[a:tx, hl]], virt_text_pos: 'inline'})
   endfunction
 
   function! s:Prop_remove(bn) abort
@@ -145,10 +149,19 @@ if has('nvim')
     endfor
   endfunction
 else
-  if !empty(prop_type_get(s:ww))
-    call prop_type_delete(s:ww)
-  endif
-  call prop_type_add(s:ww, #{highlight: 'NonText'})
+  call prop_type_add(s:ww, #{})
+
+  function! s:Prop_type(bn, zz) abort
+    let pt = prop_type_get(s:ww, #{bufnr: a:bn})
+    if a:zz == 1                    " delete
+      if !empty(pt) | call prop_type_delete(s:ww, #{bufnr: a:bn}) | endif
+    else                            " add or change
+      let hl = get(b:, s:ww . '_hl', get(g:, s:ww . '_hl', ''))
+      if hlID(hl) == 0 | let hl = 'NonText' | endif
+      call call(empty(pt) ? 'prop_type_add' : 'prop_type_change',
+                                      \[s:ww, #{bufnr: a:bn, highlight: hl}])
+    endif
+  endfunction
 
   function! s:Prop_add(bn, ln, co, tx) abort
     call prop_add(a:ln, a:co, #{type: s:ww, bufnr: a:bn, text: a:tx})

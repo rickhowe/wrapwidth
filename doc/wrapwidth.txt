@@ -1,7 +1,7 @@
 *wrapwidth.txt* Wraps long lines visually at a specific column
 
-Last Change: 2023/10/09
-Version:     1.0
+Last Change: 2023/10/14
+Version:     1.1
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023 by Rick Howe
 License:     MIT
@@ -46,7 +46,7 @@ line.
     |  3 and the Vim9 script syntax is here!                     |
     +------------------------------------------------------------+
 
-While |wrapwidth| is enabled, those blank spaces will be adjusted with wrap
+While |wrapwidth| is enabled, those virtual spaces will be adjusted with wrap
 related ('linebreak', 'breakat', 'showbreak', 'breakindent',
 'breakindentopt'), width related ('number', 'relativenumber', 'numberwidth',
 'signcolumn', 'foldcolumn'), and tab related ('tabstop', 'vartabstop')
@@ -68,5 +68,16 @@ COMMAND                                                *wrapwidth-command*
     - N > 0: a text width from left edge of a text, like 'textwidth'
     - N < 0: a wrap margin from right edge of a window, like 'wrapmargin'
     - N = 0: disables the |wrapwidth|
+
+-----------------------------------------------------------------------------
+OPTION                                                *wrapwidth-option*
+|b:wrapwidth_hl|, |g:wrapwidth_hl|
+    A highlight group name to make |wrapwidth| virtual spaces visible.
+
+-----------------------------------------------------------------------------
+CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 1.1
+* Added a global or buffer local option to make virtual spaces visible.
 
  vim:tw=78:ts=8:ft=help:norl:
