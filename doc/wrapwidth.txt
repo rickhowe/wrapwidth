@@ -1,7 +1,7 @@
 *wrapwidth.txt* Wraps long lines visually at a specific column
 
-Last Change: 2023/10/14
-Version:     1.1
+Last Change: 2023/10/21
+Version:     1.2
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023 by Rick Howe
 License:     MIT
@@ -22,9 +22,8 @@ wrapped in insert mode.
     +------------------------------------------------------------+
 
 This plugin provides the `Wrapwidth` command to set a column at which a longer
-line will be visually wrapped. When 'wrap' is on, this command inserts the
-required number of blank spaces as |virtual-text| at right edge of each screen
-line.
+line will be visually wrapped. When 'wrap' is on, the required number of blank
+spaces are inserted as |virtual-text| at right edge of each screen line.
 
     :Wrapwidth 48
     +------------------------------------------------------------+
@@ -50,7 +49,7 @@ While |wrapwidth| is enabled, those virtual spaces will be adjusted with wrap
 related ('linebreak', 'breakat', 'showbreak', 'breakindent',
 'breakindentopt'), width related ('number', 'relativenumber', 'numberwidth',
 'signcolumn', 'foldcolumn'), and tab related ('tabstop', 'vartabstop')
-options, as well as the |WinResized| and |TextChanged| events.
+options, as well as the |WinScrolled| and |TextChanged| events.
 
 If 'list' is on, an "extends" character specified in 'listchars' is shown
 instead of a blank space.
@@ -76,6 +75,11 @@ OPTION                                                *wrapwidth-option*
 
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 1.2
+* Fixed not to incorrectly wrap a line when 'linebreak' is on.
+* Improved to check a change of width on |WinScrolled| instead of |WinResized|
+  to avoid unnecessary update of virtual spaces.
 
 Update : 1.1
 * Added a global or buffer local option to make virtual spaces visible.

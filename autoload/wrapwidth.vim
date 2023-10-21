@@ -1,7 +1,7 @@
 " wrapwidth.vim : Wraps long lines visually at a specific column
 "
-" Last Change: 2023/10/14
-" Version:     1.1
+" Last Change: 2023/10/21
+" Version:     1.2
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 " Copyright:   (c) 2023 by Rick Howe
 " License:     MIT
@@ -38,37 +38,33 @@ function! s:ShowWrapWidth(ww, zz) abort
     let tw = (0 < a:ww) ? a:ww : tl + a:ww
     let sw = tl - tw
     if &wrap && 0 < tw && 0 < sw
-      let ex = matchstr(&listchars, 'extends:\zs.\ze')
-      if !&list || empty(ex) | let ex = ' ' | endif
-      if &linebreak
-        let kp = '\V\%\(' . join(split(&breakat, '\zs'), '\|') . '\)'
-      endif
+      let sp = matchstr(&listchars, 'extends:\zs.\ze')
+      if !&list || empty(sp) | let sp = ' ' | endif
+      if &linebreak | let kp = '[' . escape(&breakat, ']^-\') . ']' | endif
       let tn = tl + ((&cpoptions =~ 'n' &&
                             \(&number || &relativenumber)) ? &numberwidth : 0)
       for ln in range(1, line('$'))
         let tx = getline(ln)
-        let kl = []
-        if &linebreak
-          let ks = 0
-          while 1
-            let ks = matchend(tx, kp, ks)
-            if ks != -1 | let kl += [ks] | else | break | endif
-          endwhile
-        endif
+        if &linebreak | let ks = 0 | endif
         let vc = tw + 1
         while vc < virtcol([ln, '$'])
           let bc = virtcol2col(cw, ln, vc)
-          if (!&list || &listchars =~ 'tab') && tx[bc - 1] == "\t" ||
-                              \!empty(kl) && bc == virtcol2col(cw, ln, vc - 1)
-            let bc += 1
-          endif
-          if !empty(kl)
-            let ki = 0
-            while ki < len(kl) && kl[ki] < bc | let ki += 1 | endwhile
-            if 0 < ki | let bc = kl[ki - 1] + 1 | let kl = kl[ki :] | endif
+          " should wrap at next char of breakat/tab if tw/sw is on its spaces
+          let vx = 0
+          if &linebreak
+            if tx[bc - 1] =~ kp && bc == virtcol2col(cw, ln, vc - 1)
+              let bc += 1 | let vx = 1
+            else
+              let kx = matchend(tx[: bc - 2], '.*\zs' . kp, ks)
+              if kx != -1 | let bc = kx + 1 | let vx = 1 | endif
+            endif
+            let ks = bc - 1
+          elseif (!&list || &listchars =~ 'tab') &&
+                      \tx[bc - 1] == "\t" && bc == virtcol2col(cw, ln, vc - 1)
+            let bc += 1 | let vx = 1
           endif
           call s:Prop_add(cb, ln, bc,
-                                  \repeat(ex, sw - (virtcol([ln, bc]) - vc)))
+                          \repeat(sp, sw - (vx ? virtcol([ln, bc]) - vc : 0)))
           let vc += tn
         endwhile
       endfor
@@ -80,14 +76,12 @@ function! s:SetEvent() abort
   let bl = filter(range(1, bufnr('$')), 'getbufvar(v:val, s:ww, 0) != 0')
   let ac = ['augroup ' . s:ww, 'autocmd!']
   if !empty(bl)
-    for [en, ev] in items({1: 'OptionSet', 2: 'WinResized', 3: 'TextChanged'})
-      if en == 3
-        for bn in bl
-          let ac += ['autocmd ' . ev . ' <buffer='. bn .
-                                          \'>  call s:CheckEvent(' . en . ')']
-        endfor
+    for ev in ['OptionSet', 'WinScrolled', 'TextChanged']
+      let [ea, eb] = ['autocmd ' . ev, 'call s:CheckEvent(''' . ev[0] . ''')']
+      if ev[0] == 'T'
+        for bn in bl | let ac += [ea . ' <buffer='. bn . '> ' . eb] | endfor
       else
-        let ac += ['autocmd ' . ev . ' * call s:CheckEvent(' . en . ')']
+        let ac += [ea . ' * ' . eb]
       endif
     endfor
   endif
@@ -96,23 +90,25 @@ function! s:SetEvent() abort
   call execute(ac)
 endfunction
 
-function! s:CheckEvent(en) abort
+function! s:CheckEvent(ev) abort
   let cw = win_getid()
   let wl = []
-  if a:en == 1          " OptionSet
-    let op = expand('<amatch>')
+  if a:ev == 'O'          " OptionSet
     if v:option_old != v:option_new
-      if index(['wrap', 'linebreak', 'breakindent', 'breakindentopt', 'list',
-                    \'number', 'relativenumber', 'numberwidth', 'foldcolumn',
-                            \'signcolumn', 'tabstop', 'vartabstop'], op) != -1
-        let wl += [cw]
-      elseif index(['breakat', 'showbreak', 'listchars', 'cpoptions'], op) != -1
-        let wl += map(getwininfo(), 'v:val.winid')
-      endif
+      let op = expand('<amatch>')
+      let gl = (index(['wrap', 'linebreak', 'breakindent', 'breakindentopt',
+            \'list', 'number', 'relativenumber', 'numberwidth', 'foldcolumn',
+                  \'signcolumn', 'tabstop', 'vartabstop'], op) != -1) ? 'l' :
+                          \(index(['breakat', 'cpoptions'], op) != -1) ? 'g' :
+        \(index(['showbreak', 'listchars'], op) != -1) ? v:option_type[0] : ''
+      let wl += (gl == 'g') ? map(getwininfo(), 'v:val.winid') :
+                                                      \(gl == 'l') ? [cw] : []
     endif
-  elseif a:en == 2      " WinResized
-    let wl += v:event.windows
-  elseif a:en == 3      " TextChanged
+  elseif a:ev == 'W'      " WinScrolled
+    for wn in keys(v:event)
+      if wn != 'all' && v:event[wn].width != 0 | let wl += [eval(wn)] | endif
+    endfor
+  elseif a:ev == 'T'      " TextChanged
     let wl += [cw]
   endif
   " select one win per buf (in case of splitted)

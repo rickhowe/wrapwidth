@@ -9,9 +9,8 @@ wrapped in insert mode.
 ![sample0](sample0.png)
 
 This plugin provides the *Wrapwidth* command to set a column at which a longer
-line will be visually wrapped. When `wrap` is on, this command inserts the
-required number of blank spaces as **virtual-text** at right edge of each screen
-line.
+line will be visually wrapped. When `wrap` is on, the required number of blank
+spaces are inserted as **virtual-text** at right edge of each screen line.
 
 ![sample1](sample1.png)
 
@@ -21,7 +20,7 @@ While *wrapwidth* is enabled, those virtual spaces will be adjusted with wrap
 related (`linebreak`, `breakat`, `showbreak`, `breakindent`,
 `breakindentopt`), width related (`number`, `relativenumber`, `numberwidth`,
 `signcolumn`, `foldcolumn`), and tab related (`tabstop`, `vartabstop`)
-options, as well as the `WinResized` and `TextChanged` events.
+options, as well as the `WinScrolled` and `TextChanged` events.
 
 If `list` is on, an "extends" character specified in `listchars` is shown
 instead of a blank space.
