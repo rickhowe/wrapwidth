@@ -1,7 +1,7 @@
 " wrapwidth.vim : Wraps long lines visually at a specific column
 "
-" Last Change: 2023/10/21
-" Version:     1.2
+" Last Change: 2023/10/28
+" Version:     1.3
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 " Copyright:   (c) 2023 by Rick Howe
 " License:     MIT
@@ -10,7 +10,7 @@ if exists('g:loaded_wrapwidth') ||
             \!(has('textprop') && has('patch-9.0.0067') || has('nvim-0.10.0'))
   finish
 endif
-let g:loaded_wrapwidth = 1.2
+let g:loaded_wrapwidth = 1.3
 
 let s:save_cpo = &cpoptions
 set cpo&vim

@@ -1,7 +1,7 @@
 *wrapwidth.txt* Wraps long lines visually at a specific column
 
-Last Change: 2023/10/21
-Version:     1.2
+Last Change: 2023/10/28
+Version:     1.3
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023 by Rick Howe
 License:     MIT
@@ -49,7 +49,7 @@ While |wrapwidth| is enabled, those virtual spaces will be adjusted with wrap
 related ('linebreak', 'breakat', 'showbreak', 'breakindent',
 'breakindentopt'), width related ('number', 'relativenumber', 'numberwidth',
 'signcolumn', 'foldcolumn'), and tab related ('tabstop', 'vartabstop')
-options, as well as the |WinScrolled| and |TextChanged| events.
+options, as well as the change of text and window width.
 
 If 'list' is on, an "extends" character specified in 'listchars' is shown
 instead of a blank space.
@@ -75,6 +75,10 @@ OPTION                                                *wrapwidth-option*
 
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 1.3
+* Fixed to adjust the virtual spaces after change of text in insert mode.
+* Added to check the 'statuscolumn' option on nvim.
 
 Update : 1.2
 * Fixed not to incorrectly wrap a line when 'linebreak' is on.

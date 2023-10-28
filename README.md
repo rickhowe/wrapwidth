@@ -20,7 +20,7 @@ While *wrapwidth* is enabled, those virtual spaces will be adjusted with wrap
 related (`linebreak`, `breakat`, `showbreak`, `breakindent`,
 `breakindentopt`), width related (`number`, `relativenumber`, `numberwidth`,
 `signcolumn`, `foldcolumn`), and tab related (`tabstop`, `vartabstop`)
-options, as well as the `WinScrolled` and `TextChanged` events.
+options, as well as the change of text and window width.
 
 If `list` is on, an "extends" character specified in `listchars` is shown
 instead of a blank space.
