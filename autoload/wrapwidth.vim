@@ -1,7 +1,7 @@
 " wrapwidth.vim : Wraps long lines visually at a specific column
 "
-" Last Change: 2023/10/28
-" Version:     1.3
+" Last Change: 2023/11/05
+" Version:     1.4
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 " Copyright:   (c) 2023 by Rick Howe
 " License:     MIT
@@ -39,34 +39,46 @@ function! s:ShowWrapWidth(zz) abort
       let tl = wi.width - wi.textoff
       let [tw, sw] = (0 < ww) ? [ww, tl - ww] : [tl + ww, -ww]
       if &wrap && 0 < tw && 0 < sw
+        let kt = &linebreak && !empty(&breakat)
+        let lt = !&list || &listchars =~ 'tab'
         let sp = matchstr(&listchars, 'extends:\zs.\ze')
         if !&list || empty(sp) | let sp = ' ' | endif
-        if &linebreak | let kp = '[' . escape(&breakat, ']^-\') . ']' | endif
+        if kt
+          let kp = '[' . escape(&breakat, ']^-\') . ']'
+          let kq = '.*' . kp . '\ze\%(' . kp . '\)\@!.'
+        endif
         let tn = tl + ((&cpoptions =~ 'n' &&
                             \(&number || &relativenumber)) ? &numberwidth : 0)
         for ln in range(1, line('$'))
           let tx = getline(ln)
-          if &linebreak | let ks = 0 | endif
           let vc = tw + 1
+          let bs = 0
           while vc < virtcol([ln, '$'])
             let bc = virtcol2col(cw, ln, vc)
-            " should wrap at next char of breakat/tab if tw/sw is on its spaces
-            let vx = 0
-            if &linebreak
-              if tx[bc - 1] =~ kp && bc == virtcol2col(cw, ln, vc - 1)
-                let bc += 1 | let vx = 1
-              else
-                let kx = matchend(tx[: bc - 2], '.*\zs' . kp, ks)
-                if kx != -1 | let bc = kx + 1 | let vx = 1 | endif
+            if bs < bc - 1
+              " adjust virt spaces at a multicolumn char (lbr/tab/^M/nonASCII)
+              let vd = 0
+              while bc == virtcol2col(cw, ln, vc - 1 - vd)
+                let vd += 1
+              endwhile
+              let bx = bc
+              if 0 < vd && (kt && tx[bc - 1] =~ kp || lt && tx[bc - 1] == "\t")
+                let bc += 1
               endif
-              let ks = bc - 1
-            elseif (!&list || &listchars =~ 'tab') &&
-                      \tx[bc - 1] == "\t" && bc == virtcol2col(cw, ln, vc - 1)
-              let bc += 1 | let vx = 1
+              if kt
+                let kx = matchend(tx[: bc - 1], kq, bs)
+                if kx != -1 | let bc = kx + 1 | endif
+              endif
+              if bx != bc | let vd = vc - virtcol([ln, bc]) | endif
+            else
+              " just in case a single multicolumn char only and its width > tw
+              if strcharlen(tx[bc - 1 :]) < 2 | break | endif
+              let vd = vc - virtcol([ln, bc]) - 1
+              let bc += len(strcharpart(tx[bc - 1 :], 0, 1))
             endif
-            call s:Prop_add(cb, ln, bc,
-                          \repeat(sp, sw - (vx ? virtcol([ln, bc]) - vc : 0)))
+            call s:Prop_add(cb, ln, bc, repeat(sp, sw + vd))
             let vc += tn
+            let bs = bc - 1
           endwhile
         endfor
       endif
@@ -98,14 +110,18 @@ function! s:CheckEvent(ev) abort
   if a:ev == 'O'          " OptionSet
     if v:option_old != v:option_new
       let op = expand('<amatch>')
-      let gl = (index(['wrap', 'linebreak', 'breakindent', 'breakindentopt',
-                          \'list', 'number', 'relativenumber', 'numberwidth',
-                                  \'foldcolumn', 'signcolumn', 'statuscolumn',
-                                \'tabstop', 'vartabstop'], op) != -1) ? 'l' :
-                          \(index(['breakat', 'cpoptions'], op) != -1) ? 'g' :
-        \(index(['showbreak', 'listchars'], op) != -1) ? v:option_type[0] : ''
-      let wl += (gl == 'g') ? map(getwininfo(), 'v:val.winid') :
-                                                      \(gl == 'l') ? [cw] : []
+      for [gl, ol] in [['l', ['wrap', 'list', 'tabstop', 'vartabstop',
+                                \'linebreak', 'breakindent', 'breakindentopt',
+                                \'number', 'relativenumber', 'numberwidth',
+                                \'foldcolumn', 'signcolumn', 'statuscolumn']],
+                    \['g', ['breakat', 'cpoptions', 'display', 'ambiwidth']],
+                    \['m', ['showbreak', 'listchars']]]
+        if index(ol, op) != -1
+          if gl == 'm' | let gl = v:option_type[0] | endif
+          let wl += (gl == 'l') ? [cw] : map(getwininfo(), 'v:val.winid')
+          break
+        endif
+      endfor
     endif
   elseif a:ev == 'W'      " WinScrolled
     for wn in keys(v:event)

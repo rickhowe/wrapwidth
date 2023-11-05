@@ -16,11 +16,10 @@ spaces are inserted as **virtual-text** at right edge of each screen line.
 
 ![sample2](sample2.png)
 
-While *wrapwidth* is enabled, those virtual spaces will be adjusted with wrap
-related (`linebreak`, `breakat`, `showbreak`, `breakindent`,
-`breakindentopt`), width related (`number`, `relativenumber`, `numberwidth`,
-`signcolumn`, `foldcolumn`), and tab related (`tabstop`, `vartabstop`)
-options, as well as the change of text and window width.
+While *wrapwidth* is enabled, those virtual spaces will be adjusted with
+several options (such as `linebreak`, `showbreak`, `number`, `numberwidth`,
+`foldcolumn`, `tabstop`) as well as the change of text and window width, which
+affect the way the text is visually displayed.
 
 If `list` is on, an "extends" character specified in `listchars` is shown
 instead of a blank space.

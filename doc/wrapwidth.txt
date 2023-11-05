@@ -1,7 +1,7 @@
 *wrapwidth.txt* Wraps long lines visually at a specific column
 
-Last Change: 2023/10/28
-Version:     1.3
+Last Change: 2023/11/05
+Version:     1.4
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023 by Rick Howe
 License:     MIT
@@ -45,11 +45,10 @@ spaces are inserted as |virtual-text| at right edge of each screen line.
     |  3 and the Vim9 script syntax is here!                     |
     +------------------------------------------------------------+
 
-While |wrapwidth| is enabled, those virtual spaces will be adjusted with wrap
-related ('linebreak', 'breakat', 'showbreak', 'breakindent',
-'breakindentopt'), width related ('number', 'relativenumber', 'numberwidth',
-'signcolumn', 'foldcolumn'), and tab related ('tabstop', 'vartabstop')
-options, as well as the change of text and window width.
+While |wrapwidth| is enabled, those virtual spaces will be adjusted with
+several options (such as 'linebreak', 'showbreak', 'number', 'numberwidth',
+'foldcolumn', 'tabstop') as well as the change of text and window width, which
+affect the way the text is visually displayed.
 
 If 'list' is on, an "extends" character specified in 'listchars' is shown
 instead of a blank space.
@@ -75,6 +74,11 @@ OPTION                                                *wrapwidth-option*
 
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 1.4
+* Changed not to show ">" and "^" of a multi-column character at the right
+  edge of a window.
+* Fixed to correctly wrap after a 'breakat' character when 'linebreak' is on.
 
 Update : 1.3
 * Fixed to adjust the virtual spaces after change of text in insert mode.
