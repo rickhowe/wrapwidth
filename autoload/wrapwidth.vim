@@ -1,7 +1,7 @@
 " wrapwidth.vim : Wraps long lines visually at a specific column
 "
-" Last Change: 2023/11/05
-" Version:     1.4
+" Last Change: 2023/11/15
+" Version:     1.5
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 " Copyright:   (c) 2023 by Rick Howe
 " License:     MIT
@@ -40,7 +40,6 @@ function! s:ShowWrapWidth(zz) abort
       let [tw, sw] = (0 < ww) ? [ww, tl - ww] : [tl + ww, -ww]
       if &wrap && 0 < tw && 0 < sw
         let kt = &linebreak && !empty(&breakat)
-        let lt = !&list || &listchars =~ 'tab'
         let sp = matchstr(&listchars, 'extends:\zs.\ze')
         if !&list || empty(sp) | let sp = ' ' | endif
         if kt
@@ -52,33 +51,31 @@ function! s:ShowWrapWidth(zz) abort
         for ln in range(1, line('$'))
           let tx = getline(ln)
           let vc = tw + 1
-          let bs = 0
+          let bs = 1
           while vc < virtcol([ln, '$'])
             let bc = virtcol2col(cw, ln, vc)
-            if bs < bc - 1
-              " adjust virt spaces at a multicolumn char (lbr/tab/^M/nonASCII)
-              let vd = 0
-              while bc == virtcol2col(cw, ln, vc - 1 - vd)
-                let vd += 1
-              endwhile
-              let bx = bc
-              if 0 < vd && (kt && tx[bc - 1] =~ kp || lt && tx[bc - 1] == "\t")
-                let bc += 1
-              endif
-              if kt
-                let kx = matchend(tx[: bc - 1], kq, bs)
-                if kx != -1 | let bc = kx + 1 | endif
-              endif
-              if bx != bc | let vd = vc - virtcol([ln, bc]) | endif
-            else
-              " just in case a single multicolumn char only and its width > tw
-              if strcharlen(tx[bc - 1 :]) < 2 | break | endif
-              let vd = vc - virtcol([ln, bc]) - 1
+            let [vs, ve] = virtcol([ln, bc], 1)
+            let vd = vc - vs
+            if 0 < vd && (bc <= bs || kt && tx[bc - 1] =~ kp &&
+                                              \!(&list && tx[bc - 1] == "\t"))
+              " wrap at a next of:
+              " a single multicolumn char (^I/<xx>/nonASCII)
+              " a breakat char, except a printable tab in list mode
+              if virtcol([ln, '$']) - ve < 2 | break | endif
               let bc += len(strcharpart(tx[bc - 1 :], 0, 1))
+              let vd = -(ve - vc + 1)
+            endif
+            if kt
+              " find and wrap at a rightmost breakat char
+              let kx = matchend(tx[: bc - 1], kq, bs - 1)
+              if kx != -1
+                let bc = kx + 1
+                let vd = vc - virtcol([ln, bc])
+              endif
             endif
             call s:Prop_add(cb, ln, bc, repeat(sp, sw + vd))
             let vc += tn
-            let bs = bc - 1
+            let bs = bc
           endwhile
         endfor
       endif

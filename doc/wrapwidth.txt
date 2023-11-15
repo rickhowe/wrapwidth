@@ -1,7 +1,7 @@
 *wrapwidth.txt* Wraps long lines visually at a specific column
 
-Last Change: 2023/11/05
-Version:     1.4
+Last Change: 2023/11/15
+Version:     1.5
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023 by Rick Howe
 License:     MIT
@@ -74,6 +74,10 @@ OPTION                                                *wrapwidth-option*
 
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 1.5
+* Fixed to correctly show virtual spaces if the |wrapwidth| column is aligned
+  on a <Tab> when 'list' is on.
 
 Update : 1.4
 * Changed not to show ">" and "^" of a multi-column character at the right
