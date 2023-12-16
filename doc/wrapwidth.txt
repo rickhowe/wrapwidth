@@ -1,7 +1,7 @@
 *wrapwidth.txt* Wraps long lines visually at a specific column
 
-Last Change: 2023/11/15
-Version:     1.5
+Last Change: 2023/12/16
+Version:     2.0
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023 by Rick Howe
 License:     MIT
@@ -74,6 +74,11 @@ OPTION                                                *wrapwidth-option*
 
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 2.0
+* Improved to check changed lines using a callback specified by
+  |listener_add()| or |nvim_buf_attach()|, and update virtual spaces only on
+  them while editing.
 
 Update : 1.5
 * Fixed to correctly show virtual spaces if the |wrapwidth| column is aligned
