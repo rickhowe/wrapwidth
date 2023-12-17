@@ -87,9 +87,10 @@ function! s:SetEvent() abort
   let bl = filter(range(1, bufnr('$')), 'getbufvar(v:val, s:ww, 0) != 0')
   let ac = ['augroup ' . s:ww, 'autocmd!']
   if !empty(bl)
-    for ev in ['OptionSet', 'WinScrolled', 'TextChanged,InsertLeave']
+    " shane: adding 'BufEnter' is to make it work when/if switched buf by 'c-^'
+    for ev in ['OptionSet', 'WinScrolled', 'TextChanged,InsertLeave', 'BufEnter']
       let [ea, eb] = ['autocmd ' . ev, 'call s:CheckEvent(''' . ev[0] . ''')']
-      if ev[0] == 'T'
+      if ev[0] == 'T' || ev[0] == 'B'
         for bn in bl | let ac += [ea . ' <buffer='. bn . '> ' . eb] | endfor
       else
         let ac += [ea . ' * ' . eb]
@@ -125,6 +126,8 @@ function! s:CheckEvent(ev) abort
       if wn != 'all' && v:event[wn].width != 0 | let wl += [eval(wn)] | endif
     endfor
   elseif a:ev == 'T'      " TextChanged or InsertLeave
+    let wl += [cw]
+  elseif a:ev == 'B'      " BufEnter
     let wl += [cw]
   endif
   " select one win per buf (in case of splitted)
