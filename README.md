@@ -8,9 +8,10 @@ wrapped in insert mode.
 
 ![sample0](sample0.png)
 
-This plugin provides the *Wrapwidth* command to set a column at which a longer
-line will be visually wrapped. When `wrap` is on, the required number of blank
-spaces are inserted as **virtual-text** at right edge of each screen line.
+This plugin provides the *:Wrapwidth* command to set a column at which a
+longer line will be visually wrapped. When `wrap` is on, the required number
+of blank spaces are inserted as **virtual-text** at right edge of each screen
+line.
 
 ![sample1](sample1.png)
 
@@ -21,18 +22,22 @@ several options (such as `linebreak`, `showbreak`, `number`, `numberwidth`,
 `foldcolumn`, `tabstop`) as well as the change of text and window width, which
 affect the way the text is visually displayed.
 
-If `list` is on, an "extends" character specified in `listchars` is shown
-instead of a blank space.
+If a file is big and not necessary to visually wrap all lines at the same
+column, it is possible to specify a range to set *wrapwidth* lines.
+
+When `list` is on, an "extends" character specified in `listchars` is shown
+at the wrap column in the virtual spaces.
 
 Note that the inline **virtual-text** feature has been implemented in vim
 post-9.0 patches and nvim 0.10.0.
 
 #### Command
 
-* `:Wrapwidth N`
-  * Set a *wrapwidth* at the N-th column in the current window. A longer line
+* `:[range]Wrapwidth N`
+  * Set a *wrapwidth* at the N-th column in the current buffer. A longer line
     will be visually wrapped at that column and continued to the next screen
-    line.
+    line. It is possible to specify *wrapwidth* lines in `[range]` (default: all
+    lines) in a buffer.
     - N > 0: a text width from left edge of a text, like `textwidth`
     - N < 0: a wrap margin from right edge of a window, like `wrapmargin`
     - N = 0: disables the *wrapwidth*
