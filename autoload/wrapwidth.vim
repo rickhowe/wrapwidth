@@ -3,7 +3,7 @@
 " Last Change: 2024/01/07
 " Version:     3.0
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
-" Copyright:   (c) 2023 by Rick Howe
+" Copyright:   (c) 2023-2024 by Rick Howe
 " License:     MIT
 
 let s:save_cpo = &cpoptions
@@ -93,10 +93,10 @@ function! s:SetWrapwidth(on, ll) abort
           endif
           if kt
             " find and wrap at a rightmost breakat char
-            let kx = matchend(tx[: bc - 1], kq, bs - 1)
+            let kx = matchend(tx[: bc - 2], kq, bs - 1)
             if kx != -1
               let bc = kx + 1
-              let vd = vc - virtcol([ln, bc])
+              let vd = vc - virtcol([ln, bc], 1)[0]
             endif
           endif
           let tz = repeat(' ', wm + vd)
@@ -201,7 +201,7 @@ function! s:CheckEvent(en) abort
     call s:SetEvent(0)
   endif
   if !empty(wl)
-    " execute on one window per buffer (in case of split
+    " execute on one window per buffer (in case of split)
     let bz = {}
     for wn in wl
       let bn = winbufnr(wn)
