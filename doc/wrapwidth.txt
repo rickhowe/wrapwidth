@@ -1,7 +1,7 @@
 *wrapwidth.txt* Wraps long lines visually at a specific column
 
-Last Change: 2024/01/07
-Version:     3.0
+Last Change: 2024/01/22
+Version:     3.1
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023-2024 by Rick Howe
 License:     MIT
@@ -79,6 +79,19 @@ OPTION                                                *wrapwidth-option*
 
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 3.1
+* Improved to ignore as many series of |WinResized| events as possible and
+  work smoothly while a window is being resized by mouse.
+* Changed to keep the |wrapwidth| enabled unless the buffer is deleted. Those
+  virtual spaces set in an alternate buffer will not be removed when toggled
+  with CTRL-^ or "e: #".
+* Fixed not to lose the virtual spaces when deleting and then undoing the
+  |wrapwidth| lines.
+* Fixed to prevent an error when deleting the last line where the |wrapwidth|
+  is set.
+* Fixed to wrap at the correct column position when 'linebreak' is on and
+  several 'breakat' characters are included in a line.
 
 Update : 3.0
 * Added [range] to the `:Wrapwidth` command to specify and set more than one
