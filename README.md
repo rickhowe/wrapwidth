@@ -42,6 +42,11 @@ post-9.0 patches and nvim 0.10.0.
     - N < 0: a wrap margin from right edge of a window, like `wrapmargin`
     - N = 0: disables the *wrapwidth*
 
+* `:[range]Wrapwidth!`
+  * Redraw the *wrapwidth* virtual spaces set in the current buffer. It an be
+    useful when those spaces are accidentally displaced by other virtual text
+    than *wrapwidth*.
+
 #### Option
 
 * `b:wrapwidth_hl`, `g:wrapwidth_hl`

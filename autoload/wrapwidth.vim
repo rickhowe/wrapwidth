@@ -1,7 +1,7 @@
 " wrapwidth.vim : Wraps long lines visually at a specific column
 "
-" Last Change: 2024/01/22
-" Version:     3.1
+" Last Change: 2024/02/17
+" Version:     3.2
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 " Copyright:   (c) 2023-2024 by Rick Howe
 " License:     MIT
@@ -13,22 +13,24 @@ let s:ww = 'wrapwidth'
 let s:wh = 'wrapwidth_hl'
 
 function! wrapwidth#Wrapwidth(sl, el, ww) abort
-  if type(a:ww) == type(0)
+  let ww = str2nr(a:ww)
+  if ww != 0 || a:ww == '0'
     let cw = win_getid() | let cb = winbufnr(cw)
     call s:CleanProp(cb)
     let bv = getbufvar(cb, '')
     let ll = range(a:sl, a:el)
-    let on = (a:ww != 0)
+    let on = (ww != 0)
     if on || has_key(bv, s:ww)
       if on
         if !has_key(bv, s:ww)
-          let bv[s:ww] = #{lw: {}, wd: winwidth(cw), ch: [], lc: 0}
+          let wi = getwininfo(cw)[0]
+          let bv[s:ww] = #{lw: {}, wd: wi.width, to: wi.textoff, ch: [], lc: 0}
           call s:SetProptype(cb, 1)
           call s:SetListener(cb, 1)
         endif
         for ln in filter(ll, '!has_key(bv[s:ww].lw, v:val) ||
-                                                \bv[s:ww].lw[v:val] != a:ww')
-          let bv[s:ww].lw[ln] = a:ww
+                                                  \bv[s:ww].lw[v:val] != ww')
+          let bv[s:ww].lw[ln] = ww
         endfor
       endif
       call s:SetWrapwidth(on, ll)
@@ -44,6 +46,8 @@ function! wrapwidth#Wrapwidth(sl, el, ww) abort
       endif
       call s:SetEvent(on)
     endif
+  elseif a:ww == v:null
+    call s:RedrawWrapwidth(a:sl, a:el)
   else
     echohl ErrorMsg | echo 'argument is not number' | echohl None
   endif
@@ -114,12 +118,35 @@ function! s:SetWrapwidth(on, ll) abort
   endfor
 endfunction
 
+function! s:RedrawWrapwidth(sl, el) abort
+  let cw = win_getid() | let cb = winbufnr(cw)
+  let bw = getbufvar(cb, s:ww)
+  if !empty(bw)
+    let vt = s:FindProp(cb, a:sl, a:el)
+    let [tw, to] = (&cpoptions =~ 'n') ? [bw.wd, bw.to] : [bw.wd - bw.to, 0]
+    let rl = []
+    for [ln, co, tn] in vt.1
+      if index(rl, ln) == -1 &&
+                            \(virtcol([ln, co], 1)[0] + tn - 1 + to) % tw != 0
+        let rl += [ln]      " ww vt exists but not at the right edge
+      endif
+    endfor
+    call map(vt.1, 'v:val[0]')
+    for [ln, co, tn] in vt.0
+      if index(vt.1 + rl, ln) == -1
+        let rl += [ln]      " other vt exists but not in ww vt line
+      endif
+    endfor
+    call s:SetWrapwidth(1, rl)
+  endif
+endfunction
+
 let s:vc = items(#{OptionSet: 'ac', WinResized: 'ad', TextChanged: 'bc',
                         \InsertLeave: 'bc', WinEnter: 'bc', BufWinEnter: 'bc',
                           \BufHidden: 'bc', BufUnload: 'bc', BufDelete: 'bc'})
 
 function! s:SetEvent(on) abort
-  let bl = filter(range(1, bufnr('$')), '!empty(getbufvar(v:val, s:ww, {}))')
+  let bl = filter(range(1, bufnr('$')), '!empty(getbufvar(v:val, s:ww))')
   let ac = ['augroup ' . s:ww, 'autocmd!']
   if !empty(bl)
     let el = []
@@ -148,7 +175,7 @@ function! s:DelayEvent(en) abort
     call timer_stop(s:tm)
     let lw = 0
     for wn in v:event.windows
-      let bw = getbufvar(winbufnr(wn), s:ww, {})
+      let bw = getbufvar(winbufnr(wn), s:ww)
       if !empty(bw) | let lw += len(bw.lw) | endif
     endfor
     let s:tm = timer_start(min([&redrawtime / 10, lw]),
@@ -163,17 +190,26 @@ function! s:CheckEvent(en, ...) abort
   if ev == 'OptionSet'
     if v:option_old != v:option_new
       let op = expand('<amatch>')
-      for [gl, ol] in items(#{m: ['showbreak', 'listchars'],
-                        \g: ['breakat', 'cpoptions', 'display', 'ambiwidth'],
-                \l: ['wrap', 'list', 'tabstop', 'vartabstop', 'linebreak',
-                \'breakindent', 'breakindentopt', 'number', 'relativenumber',
-                \'numberwidth', 'foldcolumn', 'signcolumn', 'statuscolumn']})
+      for [gl, ol] in items(#{l: ['wrap', 'list', 'tabstop', 'vartabstop',
+                              \'linebreak', 'breakindent', 'breakindentopt'],
+                                              \m: ['showbreak', 'listchars'],
+                        \g: ['breakat', 'cpoptions', 'display', 'ambiwidth']})
+        " check if text display is changed
         if index(ol, op) != -1
           if gl == 'm' | let gl = v:option_type[0] | endif
           let wl += (gl == 'l') ? [cw] : map(getwininfo(), 'v:val.winid')
           break
         endif
       endfor
+      if empty(wl)
+        " check if textoff is changed (eg: number, foldcolumn)
+        let wi = getwininfo(cw)[0]
+        let bw = getbufvar(cb, s:ww)
+        if !empty(bw) && bw.to != wi.textoff
+          let wl += [cw]
+          let bw.to = wi.textoff
+        endif
+      endif
     endif
   elseif ev == 'TextChanged' || ev == 'InsertLeave'
     if !has('nvim') | call listener_flush(cb) | endif
@@ -221,7 +257,7 @@ function! s:CheckEvent(en, ...) abort
   elseif ev == 'WinResized'
     for wn in a:1             " a:1 = v:event.windows
       let bn = winbufnr(wn)
-      let bw = getbufvar(bn, s:ww, {})
+      let bw = getbufvar(bn, s:ww)
       if !empty(bw) && bw.wd != winwidth(wn)
         let wl += [wn]
         let bw.wd = winwidth(wn)
@@ -251,7 +287,7 @@ function! s:CheckEvent(en, ...) abort
     let bz = {}
     for wn in wl
       let bn = winbufnr(wn)
-      if !empty(getbufvar(bn, s:ww, {}))
+      if !empty(getbufvar(bn, s:ww))
         let bz[bn] = (has_key(bz, bn) ? bz[bn] : []) + [wn]
       endif
     endfor
@@ -327,6 +363,16 @@ if has('nvim')
       call nvim_buf_del_extmark(a:bn, s:wn, id[0])
     endfor
   endfunction
+
+  function! s:FindProp(bn, sl, el) abort
+    let vt = #{0: [], 1: []}
+    for [id, ln, co, dt] in nvim_buf_get_extmarks(a:bn, -1,
+                          \[a:sl - 1, 0], [a:el - 1, -1], #{details: v:true})
+      let ww = (dt.ns_id == s:wn)
+      let vt[ww] += [[ln + 1, co + 1, ww ? len(dt.virt_text[0][0]) : 0]]
+    endfor
+    return vt
+  endfunction
 else
   call prop_type_add(s:ww, #{highlight: 'NonText'})
 
@@ -377,6 +423,15 @@ else
                                                   \'!has_key(v:val, "type")')
       call prop_clear(pr.lnum, pr.lnum, #{bufnr: a:bn})
     endfor
+  endfunction
+
+  function! s:FindProp(bn, sl, el) abort
+    let vt = #{0: [], 1: []}
+    for pr in prop_list(a:sl, #{bufnr: a:bn, end_lnum: a:el})
+      let ww = (pr.type == s:ww)
+      let vt[ww] += [[pr.lnum, pr.col, ww ? len(pr.text) : 0]]
+    endfor
+    return vt
   endfunction
 endif
 

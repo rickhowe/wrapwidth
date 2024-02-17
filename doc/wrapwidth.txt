@@ -1,7 +1,7 @@
 *wrapwidth.txt* Wraps long lines visually at a specific column
 
-Last Change: 2024/01/22
-Version:     3.1
+Last Change: 2024/02/17
+Version:     3.2
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023-2024 by Rick Howe
 License:     MIT
@@ -72,6 +72,11 @@ COMMAND                                                *wrapwidth-command*
     - N < 0: a wrap margin from right edge of a window, like 'wrapmargin'
     - N = 0: disables the |wrapwidth|
 
+:[range]Wrapwidth!
+    Redraw the |wrapwidth| virtual spaces set in the current buffer. It an be
+    useful when those spaces are accidentally displaced by other virtual text
+    than |wrapwidth|.
+
 -----------------------------------------------------------------------------
 OPTION                                                *wrapwidth-option*
 |b:wrapwidth_hl|, |g:wrapwidth_hl|
@@ -79,6 +84,10 @@ OPTION                                                *wrapwidth-option*
 
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 3.2
+* Added ! flag to the `:Wrapwidth` command to redraw the |wrapwidth| virtual
+  spaces for an accidental displacement.
 
 Update : 3.1
 * Improved to ignore as many series of |WinResized| events as possible and
