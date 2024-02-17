@@ -142,7 +142,7 @@ function! s:RedrawWrapwidth(sl, el) abort
 endfunction
 
 let s:vc = items(#{OptionSet: 'ac', WinResized: 'ad', TextChanged: 'bc',
-                        \InsertLeave: 'bc', WinEnter: 'bc', BufWinEnter: 'bc',
+                        \InsertLeave: 'bc', WinEnter: 'bc', BufEnter: 'bc',
                           \BufHidden: 'bc', BufUnload: 'bc', BufDelete: 'bc'})
 
 function! s:SetEvent(on) abort
@@ -263,8 +263,8 @@ function! s:CheckEvent(en, ...) abort
         let bw.wd = winwidth(wn)
       endif
     endfor
-  elseif ev == 'WinEnter' || ev == 'BufWinEnter'
-    if ev == 'BufWinEnter' | call s:SetProptype(cb, 1) | endif
+  elseif ev == 'WinEnter' || ev == 'BufEnter'
+    if ev == 'BufEnter' | call s:SetProptype(cb, 1) | endif
     let bw = getbufvar(cb, s:ww)
     if bw.wd != winwidth(cw)
       let wl += [cw]
