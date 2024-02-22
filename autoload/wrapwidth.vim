@@ -1,7 +1,7 @@
 " wrapwidth.vim : Wraps long lines visually at a specific column
 "
-" Last Change: 2024/02/17
-" Version:     3.2
+" Last Change: 2024/02/22
+" Version:     3.3
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 " Copyright:   (c) 2023-2024 by Rick Howe
 " License:     MIT
@@ -144,6 +144,8 @@ endfunction
 let s:vc = items(#{OptionSet: 'ac', WinResized: 'ad', TextChanged: 'bc',
                         \InsertLeave: 'bc', WinEnter: 'bc', BufWinEnter: 'bc',
                           \BufHidden: 'bc', BufUnload: 'bc', BufDelete: 'bc'})
+                                    \+ (get(g:, "wrapwidth_TextChangedI", 0) ?
+                                           \items(#{TextChangedI: 'bc'}) : [])
 
 function! s:SetEvent(on) abort
   let bl = filter(range(1, bufnr('$')), '!empty(getbufvar(v:val, s:ww))')
@@ -211,7 +213,7 @@ function! s:CheckEvent(en, ...) abort
         endif
       endif
     endif
-  elseif ev == 'TextChanged' || ev == 'InsertLeave'
+  elseif ev =~ 'TextChanged' || ev == 'InsertLeave'
     if !has('nvim') | call listener_flush(cb) | endif
     let bw = getbufvar(cb, s:ww)
     let ul = []

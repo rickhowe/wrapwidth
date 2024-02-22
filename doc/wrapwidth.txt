@@ -1,7 +1,7 @@
 *wrapwidth.txt* Wraps long lines visually at a specific column
 
-Last Change: 2024/02/17
-Version:     3.2
+Last Change: 2024/02/22
+Version:     3.3
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023-2024 by Rick Howe
 License:     MIT
@@ -73,7 +73,7 @@ COMMAND                                                *wrapwidth-command*
     - N = 0: disables the |wrapwidth|
 
 :[range]Wrapwidth!
-    Redraw the |wrapwidth| virtual spaces set in the current buffer. It an be
+    Redraw the |wrapwidth| virtual spaces set in the current buffer. It can be
     useful when those spaces are accidentally displaced by other virtual text
     than |wrapwidth|.
 
@@ -82,8 +82,15 @@ OPTION                                                *wrapwidth-option*
 |b:wrapwidth_hl|, |g:wrapwidth_hl|
     A highlight group name to make |wrapwidth| virtual spaces visible.
 
+|g:wrapwidth_TextChangedI|
+    Whether to update virtual spaces on every change made in |Insert| mode.
+
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 3.3
+* Added |g:wrapwidth_TextChangedI| variable to control if TextChangedI should
+  be on the list of events to check for virtual spaces update.
 
 Update : 3.2
 * Added ! flag to the `:Wrapwidth` command to redraw the |wrapwidth| virtual
