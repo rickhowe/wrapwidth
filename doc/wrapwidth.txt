@@ -1,7 +1,7 @@
-*wrapwidth.txt* Wraps long lines visually at a specific column
+*wrapwidth.txt* Wraps long lines virtually at a specific column
 
-Last Change: 2024/02/17
-Version:     3.2
+Last Change: 2024/03/13
+Version:     3.3
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 Copyright:   (c) 2023-2024 by Rick Howe
 License:     MIT
@@ -14,36 +14,30 @@ the 'textwidth' and 'wrapmargin' options break a long line but it is hard
 wrapped in insert mode.
 
     +------------------------------------------------------------+
-    |  1 Welcome to Vim 9!  Several years have passed since the p|
-    |    revious release.                                        |
-    |  2 A large number of bugs have been fixed, many nice featur|
-    |    es have been added                                      |
-    |  3 and the Vim9 script syntax is here!                     |
+    |  1 The "textwidth" option can be used to automatically brea|
+    |    k a line before it gets too long. Set the "textwidth" op|
+    |    tion to the desired maximum line length.                |
+    |  2 If you then type more characters (not spaces or tabs), t|
+    |    he last word will be put on a new line (unless it is the|
+    |     only word on the line). If you set "textwidth" to 0, th|
+    |     is feature is disabled.                                |
     +------------------------------------------------------------+
 
 This plugin provides the `:Wrapwidth` command to set a column at which a
-longer line will be visually wrapped. When 'wrap' is on, the required number
+longer line will be virtually wrapped. When 'wrap' is on, the required number
 of blank spaces are inserted as |virtual-text| at right edge of each screen
 line.
 
-    :Wrapwidth 48
+    :Wrapwidth 50 (= Wrapwidth -6)
     +------------------------------------------------------------+
-    |  1 Welcome to Vim 9!  Several years have passed sin        |
-    |    ce the previous release.                                |
-    |  2 A large number of bugs have been fixed, many nic        |
-    |    e features have been added                              |
-    |  3 and the Vim9 script syntax is here!                     |
-    +------------------------------------------------------------+
-
-    :Wrapwidth -21
-    +------------------------------------------------------------+
-    |  1 Welcome to Vim 9!  Several years ha                     |
-    |    ve passed since the previous releas                     |
-    |    e.                                                      |
-    |  2 A large number of bugs have been fi                     |
-    |    xed, many nice features have been a                     |
-    |    dded                                                    |
-    |  3 and the Vim9 script syntax is here!                     |
+    |  1 The "textwidth" option can be used to automaticall      |
+    |    y break a line before it gets too long. Set the "t      |
+    |    extwidth" option to the desired maximum line lengt      |
+    |    h.                                                      |
+    |  2 If you then type more characters (not spaces or ta      |
+    |    bs), the last word will be put on a new line (unle      |
+    |    ss it is the only word on the line). If you set "t      |
+    |    extwidth" to 0, this feature is disabled.               | 
     +------------------------------------------------------------+
 
 While |wrapwidth| is enabled, those virtual spaces will be adjusted with
@@ -51,11 +45,26 @@ several options (such as 'linebreak', 'showbreak', 'number', 'numberwidth',
 'foldcolumn', 'tabstop') as well as the change of text and window width, which
 affect the way the text is visually displayed.
 
-If a file is big and not necessary to visually wrap all lines at the same
-column, it is possible to specify a range to set |wrapwidth| lines.
+And you can set some of the |wrapwidth| specific options buffer-locally or
+globally to see a wrap position sign and count number on each wrapped line.
 
-When 'list' is on, an "extends" character specified in 'listchars' is shown
-at the wrap column in the virtual spaces.
+    :set linebreak
+    :let g:wrapwidth_sign='|'
+    :let g:wrapwidth_number=1
+    :Wrapwidth 50 (= Wrapwidth -6)
+    +------------------------------------------------------------+
+    |  1 The "textwidth" option can be used to             `|`    `1`|
+    |    automatically break a line before it gets too     `|`    `2`|
+    |    long. See the "textwidth" option to the desired   `|`    `3`|
+    |    maximum line length.                                    |
+    |  2 If you then type more characters (not spaces or   `|`    `1`|
+    |    tabs), the last word will be put on a new line    `|`    `2`|
+    |    (unless it is the only word on the line). If you  `|`    `3`|
+    |    set "textwidth" to 0, this feature is disabled.         | 
+    +------------------------------------------------------------+
+
+If a file is big and not necessary to virtually wrap all lines at the same
+column, it is possible to specify a range to set |wrapwidth| lines.
 
 Note that the inline |virtual-text| feature has been implemented in vim
 post-9.0 patches and nvim 0.10.0.
@@ -65,7 +74,7 @@ COMMAND                                                *wrapwidth-command*
 
 :[range]Wrapwidth N
     Set a |wrapwidth| at the N-th column in the current buffer. A longer line
-    will be visually wrapped at that column and continued to the next screen
+    will be virtually wrapped at that column and continued to the next screen
     line. It is possible to specify |wrapwidth| lines in [range] (default: all
     lines) in a buffer.
     - N > 0: a text width from left edge of a text, like 'textwidth'
@@ -73,17 +82,32 @@ COMMAND                                                *wrapwidth-command*
     - N = 0: disables the |wrapwidth|
 
 :[range]Wrapwidth!
-    Redraw the |wrapwidth| virtual spaces set in the current buffer. It an be
-    useful when those spaces are accidentally displaced by other virtual text
-    than |wrapwidth|.
+    Redraw the |wrapwidth| virtual spaces set in the current buffer (since
+    patch 9.0.1762). It can be useful when those spaces are accidentally
+    displaced by other virtual text than |wrapwidth|.
 
 -----------------------------------------------------------------------------
-OPTION                                                *wrapwidth-option*
+OPTIONS                                                *wrapwidth-options*
+
 |b:wrapwidth_hl|, |g:wrapwidth_hl|
-    A highlight group name to make |wrapwidth| virtual spaces visible.
+    A highlight group to make |wrapwidth| virtual spaces visible (default:
+    'NonText').
+
+|b:wrapwidth_sign|, |g:wrapwidth_sign|
+    A string to indicate the position of the wrap column in the virtual spaces
+    (default: '').
+
+|b:wrapwidth_number|, |g:wrapwidth_number|
+    Enable (1) or disable (0) the count number to show on each of the wrapped
+    line (default: 0).
 
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 3.3
+* Improved to automatically adjust the |wrapwidth| virtual spaces while typing
+  in insert mode.
+* Added |wrapwidth_sign| and |wrapwidth_number| options.
 
 Update : 3.2
 * Added ! flag to the `:Wrapwidth` command to redraw the |wrapwidth| virtual

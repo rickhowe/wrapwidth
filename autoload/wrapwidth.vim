@@ -1,7 +1,7 @@
-" wrapwidth.vim : Wraps long lines visually at a specific column
+" wrapwidth.vim : Wraps long lines virtually at a specific column
 "
-" Last Change: 2024/02/17
-" Version:     3.2
+" Last Change: 2024/03/13
+" Version:     3.3
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 " Copyright:   (c) 2023-2024 by Rick Howe
 " License:     MIT
@@ -11,6 +11,8 @@ set cpo&vim
 
 let s:ww = 'wrapwidth'
 let s:wh = 'wrapwidth_hl'
+let s:ws = 'wrapwidth_sign'
+let s:wn = 'wrapwidth_number'
 
 function! wrapwidth#Wrapwidth(sl, el, ww) abort
   let ww = str2nr(a:ww)
@@ -47,7 +49,11 @@ function! wrapwidth#Wrapwidth(sl, el, ww) abort
       call s:SetEvent(on)
     endif
   elseif a:ww == v:null
-    call s:RedrawWrapwidth(a:sl, a:el)
+    if has('nvim') || has('patch-9.0.1762')
+      call s:RedrawWrapwidth(a:sl, a:el)
+    else
+      echohl ErrorMsg | echo 'patch 9.0.1762 is required' | echohl None
+    endif
   else
     echohl ErrorMsg | echo 'argument is not number' | echohl None
   endif
@@ -59,18 +65,14 @@ function! s:SetWrapwidth(on, ll) abort
   if on
     let wi = getwininfo(cw)[0]
     let tl = wi.width - wi.textoff
-    if &list
-      let ex = matchstr(&listchars, 'extends:\zs.\{-}\ze\(,\|$\)')
-      let ex = empty(ex) ? ' ' : (ex[0] == '\') ? nr2char('0x' . ex[2:]) : ex
+    let lb = &linebreak && !empty(&breakat)
+    if lb
+      let le = escape(&breakat, ']^-\')
+      let lp = '^.*[' . le . ']\zs[^' . le . ']'
     endif
-    let kt = &linebreak && !empty(&breakat)
-    if kt
-      let ke = escape(&breakat, ']^-\')
-      let kp = '[' . ke . ']'
-      let kq = '[' . ke . ']\zs[^' . ke . ']\+$'
-    endif
-    let tn = tl + ((&cpoptions =~ 'n' &&
-                            \(&number || &relativenumber)) ? &numberwidth : 0)
+    let tn = tl + ((&cpoptions !~# 'n') ? 0 :
+                          \&number ? max([len(line('$')) + 1, &numberwidth]) :
+                                          \&relativenumber ? &numberwidth : 0)
   endif
   let bw = getbufvar(cb, s:ww)
   for ln in a:ll
@@ -82,36 +84,45 @@ function! s:SetWrapwidth(on, ll) abort
         let tx = getline(ln)
         let vc = tw + 1
         let bs = 1
+        let nu = 1
         while vc < virtcol([ln, '$'])
           let bc = virtcol2col(cw, ln, vc)
           let [vs, ve] = virtcol([ln, bc], 1)
           let vd = vc - vs
-          if 0 < vd && (bc <= bs || kt && tx[bc - 1] =~ kp &&
-                                              \!(&list && tx[bc - 1] == "\t"))
-            " wrap at a next of:
-            " a single multicolumn char (^I/<xx>/nonASCII)
-            " a breakat char, except a printable tab in list mode
+          if 0 < vd && bc <= bs
+            " wrap at a next to a single multicolumn char (^I/<xx>/nonASCII)
             if virtcol([ln, '$']) - ve < 2 | break | endif
             let bc += len(strcharpart(tx[bc - 1 :], 0, 1))
             let vd = -(ve - vc + 1)
           endif
-          if kt
-            " find and wrap at a rightmost breakat char
-            let kx = match(tx[: bc - 2], kq, bs - 1)
-            if kx != -1
-              let bc = kx + 1
+          if lb
+            " find post-broken chars to fill until vc
+            let tz = ''
+            for ch in split(strcharpart(tx[bc - 1 :], 1, vd), '\zs')
+              if vd < strwidth(tz . ch) | break | endif
+              let tz .= ch
+            endfor
+            " wrap at a char next to a rightmost breakat char
+            let lx = match(tx[: bc - 1 + max([vd, len(tz)])], lp, bs - 1)
+            if lx != -1
+              let bc = lx + 1
               let vd = vc - virtcol([ln, bc], 1)[0]
             endif
           endif
-          let tz = repeat(' ', wm + vd)
-          if !empty(tz)
-            if &list && 0 <= vd
-              let tz = substitute(tz, '\%' . (vd + 1) . 'c.', ex, '')
-            endif
+          if 0 < wm + vd
+            let ws = getbufvar(cb, s:ws, get(g:, s:ws, ''))
+            let wn = getbufvar(cb, s:wn, get(g:, s:wn, 0)) ? nu : ''
+            let al = len(ws) + len(wn)
+            let bl = min([wm, wm + vd])
+            let tz = repeat(' ', vd) .
+                              \((al <= bl) ? ws . repeat(' ', bl - al) . wn :
+                          \empty(ws) ? wn[-bl :] : empty(wn) ? ws[: bl - 1] :
+                                  \(1 < bl) ? ws[: bl - 2] . wn[-1 :] : ws[0])
             call s:Propadd(cb, ln, bc, tz)
           endif
           let vc += tn
           let bs = bc
+          let nu += 1
         endwhile
       endif
     endif
@@ -141,52 +152,34 @@ function! s:RedrawWrapwidth(sl, el) abort
   endif
 endfunction
 
-let s:vc = items(#{OptionSet: 'ac', WinResized: 'ad', TextChanged: 'bc',
-                        \InsertLeave: 'bc', WinEnter: 'bc', BufWinEnter: 'bc',
-                          \BufHidden: 'bc', BufUnload: 'bc', BufDelete: 'bc'})
+let s:ev = [['BufDelete', 'l'], ['BufHidden', 'l'], ['BufUnload', 'l'],
+              \['BufWinEnter', 'l'], ['WinEnter', 'l'], ['TextChanged', 'l'],
+              \['TextChangedI', 'l'], ['OptionSet', 'g'], ['WinResized', 'g']]
 
 function! s:SetEvent(on) abort
+  let ac = []
   let bl = filter(range(1, bufnr('$')), '!empty(getbufvar(v:val, s:ww))')
-  let ac = ['augroup ' . s:ww, 'autocmd!']
   if !empty(bl)
-    let el = []
-    for en in range(len(s:vc))
-      let [ev, ec] = s:vc[en]
-      if ec[0] == 'b'
-        for bn in bl | let el += [[en, ev, bn, ec[1]]] | endfor
+    for en in range(len(s:ev))
+      let [ev, gl] = s:ev[en]
+      if gl == 'l'
+        for bn in bl | let ac += [[ev, '<buffer=' . bn . '>', en]] | endfor
       else
-        let el += [[en, ev, 0, ec[1]]]
+        let ac += [[ev, '*', en]]
       endif
     endfor
-    let ac += map(el, 'join(["autocmd", v:val[1],
-                \(v:val[2] == 0) ? "*" : "<buffer=" . v:val[2] . ">", "call",
-                      \((v:val[3] == "c") ? "s:CheckEvent" : "s:DelayEvent") .
-                                                \"(" . v:val[0] . ")"], " ")')
+    call map(ac, '"autocmd " . v:val[0] . " " . v:val[1] .
+                                    \" call s:CheckEvent(" . v:val[2] . ")"')
   endif
-  let ac += ['augroup END']
-  if empty(bl) | let ac += ['augroup! ' . s:ww] | endif
+  let ac = ['augroup ' . s:ww, 'autocmd!'] + ac + ['augroup END'] +
+                                      \(empty(ac) ? ['augroup! ' . s:ww] : [])
   call execute(ac)
 endfunction
 
-let s:tm = 0
-function! s:DelayEvent(en) abort
-  let ev = s:vc[a:en][0]
-  if ev == 'WinResized'
-    call timer_stop(s:tm)
-    let lw = 0
-    for wn in v:event.windows
-      let bw = getbufvar(winbufnr(wn), s:ww)
-      if !empty(bw) | let lw += len(bw.lw) | endif
-    endfor
-    let s:tm = timer_start(min([&redrawtime / 10, lw]),
-                          \function('s:CheckEvent', [a:en, v:event.windows]))
-  endif
-endfunction
-
-function! s:CheckEvent(en, ...) abort
+function! s:CheckEvent(en) abort
   let cw = win_getid() | let cb = winbufnr(cw)
   let wl = []
-  let ev = s:vc[a:en][0]
+  let ev = s:ev[a:en][0]
   if ev == 'OptionSet'
     if v:option_old != v:option_new
       let op = expand('<amatch>')
@@ -211,7 +204,7 @@ function! s:CheckEvent(en, ...) abort
         endif
       endif
     endif
-  elseif ev == 'TextChanged' || ev == 'InsertLeave'
+  elseif ev == 'TextChanged' || ev == 'TextChangedI'
     if !has('nvim') | call listener_flush(cb) | endif
     let bw = getbufvar(cb, s:ww)
     let ul = []
@@ -219,9 +212,7 @@ function! s:CheckEvent(en, ...) abort
       if na < 0
         " remove deleted lines
         for ln in filter(range(sl, el - 1), 'has_key(bw.lw, v:val)')
-          if line('$') < ln || empty(s:Proplist(cb, ln))
-            unlet bw.lw[ln]
-          endif
+          if empty(s:Proplist(cb, ln)) | unlet bw.lw[ln] | endif
         endfor
       endif
       if na != 0
@@ -255,7 +246,7 @@ function! s:CheckEvent(en, ...) abort
     if !empty(ul) | let wl += [cw] | endif
     let bw.ch = []
   elseif ev == 'WinResized'
-    for wn in a:1             " a:1 = v:event.windows
+    for wn in v:event.windows
       let bn = winbufnr(wn)
       let bw = getbufvar(bn, s:ww)
       if !empty(bw) && bw.wd != winwidth(wn)
@@ -300,7 +291,7 @@ function! s:CheckEvent(en, ...) abort
 endfunction
 
 if has('nvim')
-  let s:wn = nvim_create_namespace(s:ww)
+  let s:ns = nvim_create_namespace(s:ww)
   let s:cb = 'wrapwidth_cb'
 
   function! s:SetListener(bn, on) abort
@@ -341,26 +332,26 @@ if has('nvim')
   function! s:Propadd(bn, ln, co, tx) abort
     let hl = getbufvar(a:bn, s:wh, get(g:, s:wh, ''))
     if hlID(hl) == 0 | let hl = 'NonText' | endif
-    call nvim_buf_set_extmark(a:bn, s:wn, a:ln - 1, a:co - 1,
+    call nvim_buf_set_extmark(a:bn, s:ns, a:ln - 1, a:co - 1,
                           \#{virt_text: [[a:tx, hl]], virt_text_pos: 'inline',
                                                         \invalidate: v:true})
   endfunction
 
   function! s:Propremove(bn, ln) abort
     for id in s:Proplist(a:bn, a:ln)
-      call nvim_buf_del_extmark(a:bn, s:wn, id[0])
+      call nvim_buf_del_extmark(a:bn, s:ns, id[0])
     endfor
   endfunction
 
   function! s:Proplist(bn, ln) abort
-    return nvim_buf_get_extmarks(a:bn, s:wn, [a:ln - 1, 0], [a:ln - 1, -1], {})
+    return nvim_buf_get_extmarks(a:bn, s:ns, [a:ln - 1, 0], [a:ln - 1, -1], {})
   endfunction
 
   function! s:CleanProp(bn) abort
-    for id in filter(nvim_buf_get_extmarks(a:bn, s:wn, 0, -1,
+    for id in filter(nvim_buf_get_extmarks(a:bn, s:ns, 0, -1,
                                                         \#{details: v:true}),
                 \'has_key(v:val[3], "invalid") && v:val[3].invalid == v:true')
-      call nvim_buf_del_extmark(a:bn, s:wn, id[0])
+      call nvim_buf_del_extmark(a:bn, s:ns, id[0])
     endfor
   endfunction
 
@@ -368,13 +359,14 @@ if has('nvim')
     let vt = #{0: [], 1: []}
     for [id, ln, co, dt] in nvim_buf_get_extmarks(a:bn, -1,
                           \[a:sl - 1, 0], [a:el - 1, -1], #{details: v:true})
-      let ww = (dt.ns_id == s:wn)
+      let ww = (dt.ns_id == s:ns)
       let vt[ww] += [[ln + 1, co + 1, ww ? len(dt.virt_text[0][0]) : 0]]
     endfor
     return vt
   endfunction
 else
-  call prop_type_add(s:ww, #{highlight: 'NonText'})
+  call function(empty(prop_type_get(s:ww)) ? 'prop_type_add' :
+                          \'prop_type_change')(s:ww, #{highlight: 'NonText'})
 
   function! s:SetListener(bn, on) abort
     let bw = getbufvar(a:bn, s:ww)
@@ -415,7 +407,8 @@ else
   endfunction
 
   function! s:Proplist(bn, ln) abort
-    return prop_list(a:ln, #{bufnr: a:bn, types: [s:ww]})
+    return (getbufinfo(a:bn)[0].linecount < a:ln) ? [] :
+                              \prop_list(a:ln, #{bufnr: a:bn, types: [s:ww]})
   endfunction
 
   function! s:CleanProp(bn) abort
