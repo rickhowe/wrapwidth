@@ -17,7 +17,7 @@ line.
 
 While *wrapwidth* is enabled, those virtual spaces will be adjusted with
 several options (such as `linebreak`, `showbreak`, `number`, `numberwidth`,
-`foldcolumn`, `tabstop`) as well as the change of text and window width, which
+`foldcolumn`, `tabstop`) as well as a change of text and window width, which
 affect the way the text is visually displayed.
 
 And you can set some of the *wrapwidth* specific options buffer-locally or
@@ -43,9 +43,9 @@ post-9.0 patches and nvim 0.10.0.
     - N = 0: disables the *wrapwidth*
 
 * `:[range]Wrapwidth!`
-  * Redraw the *wrapwidth* virtual spaces set in the current buffer (since
-    patch 9.0.1762). It can be useful when those spaces are accidentally
-    displaced by other virtual text than *wrapwidth*.
+  * Repair and redraw the *wrapwidth* virtual spaces set in the current buffer
+    (since patch 9.0.1762). It can be useful when those spaces are
+    accidentally displaced by other virtual text than *wrapwidth*.
 
 #### Options
 

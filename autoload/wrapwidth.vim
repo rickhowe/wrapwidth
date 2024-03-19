@@ -1,7 +1,7 @@
 " wrapwidth.vim : Wraps long lines virtually at a specific column
 "
-" Last Change: 2024/03/13
-" Version:     3.3
+" Last Change: 2024/03/19
+" Version:     3.4
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
 " Copyright:   (c) 2023-2024 by Rick Howe
 " License:     MIT
@@ -73,6 +73,8 @@ function! s:SetWrapwidth(on, ll) abort
     let tn = tl + ((&cpoptions !~# 'n') ? 0 :
                           \&number ? max([len(line('$')) + 1, &numberwidth]) :
                                           \&relativenumber ? &numberwidth : 0)
+    call s:ChangeProptype(cb)
+    let ws = getbufvar(cb, s:ws, get(g:, s:ws, ''))
   endif
   let bw = getbufvar(cb, s:ww)
   for ln in a:ll
@@ -110,14 +112,27 @@ function! s:SetWrapwidth(on, ll) abort
             endif
           endif
           if 0 < wm + vd
-            let ws = getbufvar(cb, s:ws, get(g:, s:ws, ''))
             let wn = getbufvar(cb, s:wn, get(g:, s:wn, 0)) ? nu : ''
-            let al = len(ws) + len(wn)
-            let bl = min([wm, wm + vd])
-            let tz = repeat(' ', vd) .
-                              \((al <= bl) ? ws . repeat(' ', bl - al) . wn :
-                          \empty(ws) ? wn[-bl :] : empty(wn) ? ws[: bl - 1] :
-                                  \(1 < bl) ? ws[: bl - 2] . wn[-1 :] : ws[0])
+            let wv = min([wm, wm + vd])
+            let [cs, cn] = [split(ws, '\zs'), split(wn, '\zs')]
+            let [ss, sn, is, in] = ['', '', 0, -1]
+            while 0 < wv
+              let wx = wv
+              if is < len(cs)
+                let wc = strwidth(cs[is])
+                if wc <= wv
+                  let ss .= cs[is] | let is += 1 | let wv -= wc
+                endif
+              endif
+              if -in <= len(cn)
+                let wc = strwidth(cn[in])
+                if wc <= wv
+                  let sn = cn[in] . sn | let in -= 1 | let wv -= wc
+                endif
+              endif
+              if wx == wv | break | endif
+            endwhile
+            let tz = repeat(' ', vd) . ss . repeat(' ', wv) . sn
             call s:Propadd(cb, ln, bc, tz)
           endif
           let vc += tn
@@ -133,19 +148,24 @@ function! s:RedrawWrapwidth(sl, el) abort
   let cw = win_getid() | let cb = winbufnr(cw)
   let bw = getbufvar(cb, s:ww)
   if !empty(bw)
-    let vt = s:FindProp(cb, a:sl, a:el)
     let [tw, to] = (&cpoptions =~ 'n') ? [bw.wd, bw.to] : [bw.wd - bw.to, 0]
+    let vt = s:FindProp(cb, a:sl, a:el)
     let rl = []
-    for [ln, co, tn] in vt.1
+    for [ln, co, vw] in vt.1
       if index(rl, ln) == -1 &&
-                            \(virtcol([ln, co], 1)[0] + tn - 1 + to) % tw != 0
-        let rl += [ln]      " ww vt exists but not at the right edge
+                            \(virtcol([ln, co], 1)[0] + vw - 1 + to) % tw != 0
+        let rl += [ln]      " ww vt shown but not at the right edge
       endif
     endfor
     call map(vt.1, 'v:val[0]')
-    for [ln, co, tn] in vt.0
+    for [ln, co, vw] in vt.0
       if index(vt.1 + rl, ln) == -1
-        let rl += [ln]      " other vt exists but not in ww vt line
+        let rl += [ln]      " other vt shown but not in ww vt line
+      endif
+    endfor
+    for ln in map(keys(bw.lw), 'str2nr(v:val)')
+      if index(vt.1 + rl, ln) == -1
+        let rl += [ln]      " ww vt not shown
       endif
     endfor
     call s:SetWrapwidth(1, rl)
@@ -240,8 +260,12 @@ function! s:CheckEvent(en) abort
           if bw.lw[ln] == 0 | unlet bw.lw[ln] | endif
         endfor
       endif
-      " find updated (changed and added) lines
-      let ul += filter(range(sl, el - 1 + na), 'index(ul, v:val) == -1')
+      " find changed and added lines shifted by deleted lines
+      if 0 <= na
+        let ul += filter(range(sl, el - 1 + na), 'index(ul, v:val) == -1')
+      else
+        call map(ul, '(sl < v:val || el - 1 < v:val) ? v:val + na : v:val')
+      endif
     endfor
     if !empty(ul) | let wl += [cw] | endif
     let bw.ch = []
@@ -327,13 +351,21 @@ if has('nvim')
   endfunction
 
   function! s:SetProptype(bn, on) abort
+    let bw = getbufvar(a:bn, s:ww)
+    if a:on | let bw.hl = 'NonText' | else | unlet bw.hl | endif
+  endfunction
+
+  function! s:ChangeProptype(bn) abort
+    let hl = getbufvar(a:bn, s:wh, get(g:, s:wh, ''))
+    if hlID(hl) != 0
+      let bw = getbufvar(a:bn, s:ww) | let bw.hl = hl
+    endif
   endfunction
 
   function! s:Propadd(bn, ln, co, tx) abort
-    let hl = getbufvar(a:bn, s:wh, get(g:, s:wh, ''))
-    if hlID(hl) == 0 | let hl = 'NonText' | endif
+    let bw = getbufvar(a:bn, s:ww)
     call nvim_buf_set_extmark(a:bn, s:ns, a:ln - 1, a:co - 1,
-                          \#{virt_text: [[a:tx, hl]], virt_text_pos: 'inline',
+                      \#{virt_text: [[a:tx, bw.hl]], virt_text_pos: 'inline',
                                                         \invalidate: v:true})
   endfunction
 
@@ -360,14 +392,11 @@ if has('nvim')
     for [id, ln, co, dt] in nvim_buf_get_extmarks(a:bn, -1,
                           \[a:sl - 1, 0], [a:el - 1, -1], #{details: v:true})
       let ww = (dt.ns_id == s:ns)
-      let vt[ww] += [[ln + 1, co + 1, ww ? len(dt.virt_text[0][0]) : 0]]
+      let vt[ww] += [[ln + 1, co + 1, ww ? strwidth(dt.virt_text[0][0]) : 0]]
     endfor
     return vt
   endfunction
 else
-  call function(empty(prop_type_get(s:ww)) ? 'prop_type_add' :
-                          \'prop_type_change')(s:ww, #{highlight: 'NonText'})
-
   function! s:SetListener(bn, on) abort
     let bw = getbufvar(a:bn, s:ww)
     if a:on && bw.lc == 0
@@ -388,11 +417,16 @@ else
   function! s:SetProptype(bn, on) abort
     let pt = prop_type_get(s:ww, #{bufnr: a:bn})
     if a:on && empty(pt)
-      let hl = getbufvar(a:bn, s:wh, get(g:, s:wh, ''))
-      if hlID(hl) == 0 | let hl = 'NonText' | endif
-      call prop_type_add(s:ww, #{bufnr: a:bn, highlight: hl})
+      call prop_type_add(s:ww, #{bufnr: a:bn, highlight: 'NonText'})
     elseif !a:on && !empty(pt)
       call prop_type_delete(s:ww, #{bufnr: a:bn})
+    endif
+  endfunction
+
+  function! s:ChangeProptype(bn) abort
+    let hl = getbufvar(a:bn, s:wh, get(g:, s:wh, ''))
+    if hlID(hl) != 0
+      call prop_type_change(s:ww, #{bufnr: a:bn, highlight: hl})
     endif
   endfunction
 
@@ -422,7 +456,7 @@ else
     let vt = #{0: [], 1: []}
     for pr in prop_list(a:sl, #{bufnr: a:bn, end_lnum: a:el})
       let ww = (pr.type == s:ww)
-      let vt[ww] += [[pr.lnum, pr.col, ww ? len(pr.text) : 0]]
+      let vt[ww] += [[pr.lnum, pr.col, ww ? strwidth(pr.text) : 0]]
     endfor
     return vt
   endfunction
