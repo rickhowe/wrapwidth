@@ -1,9 +1,9 @@
 " wrapwidth.vim : Wraps long lines virtually at a specific column
 "
-" Last Change: 2024/03/19
-" Version:     3.4
+" Last Change: 2025/08/07
+" Version:     3.5
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
-" Copyright:   (c) 2023-2024 by Rick Howe
+" Copyright:   (c) 2023-2025 by Rick Howe
 " License:     MIT
 
 let s:save_cpo = &cpoptions
@@ -75,6 +75,9 @@ function! s:SetWrapwidth(on, ll) abort
                                           \&relativenumber ? &numberwidth : 0)
     call s:ChangeProptype(cb)
     let ws = getbufvar(cb, s:ws, get(g:, s:ws, ''))
+    let CountHidden = [{_ -> 0}, 's:CountSynHidden', 's:CountTSHidden']
+                  \[(&conceallevel < 2) ? 0 : exists('b:current_syntax') ? 1 :
+                            \has('nvim') && exists('b:ts_highlight') ? 2 : 0]
   endif
   let bw = getbufvar(cb, s:ww)
   for ln in a:ll
@@ -132,7 +135,9 @@ function! s:SetWrapwidth(on, ll) abort
               endif
               if wx == wv | break | endif
             endwhile
-            let tz = repeat(' ', vd) . ss . repeat(' ', wv) . sn
+            " adjust virtual spaces with hidden concealed chars if any
+            let nh = call(CountHidden, [ln, bs, bc - 1])
+            let tz = repeat(' ', vd + nh) . ss . repeat(' ', wv - nh) . sn
             call s:Propadd(cb, ln, bc, tz)
           endif
           let vc += tn
@@ -203,10 +208,10 @@ function! s:CheckEvent(en) abort
   if ev == 'OptionSet'
     if v:option_old != v:option_new
       let op = expand('<amatch>')
-      for [gl, ol] in items(#{l: ['wrap', 'list', 'tabstop', 'vartabstop',
-                              \'linebreak', 'breakindent', 'breakindentopt'],
-                                              \m: ['showbreak', 'listchars'],
-                        \g: ['breakat', 'cpoptions', 'display', 'ambiwidth']})
+      for [gl, ol] in items(#{m: ['showbreak', 'listchars'],
+                        \g: ['breakat', 'cpoptions', 'display', 'ambiwidth'],
+                    \l: ['wrap', 'list', 'tabstop', 'vartabstop', 'linebreak',
+          \'breakindent', 'breakindentopt', 'concealcursor', 'conceallevel']})
         " check if text display is changed
         if index(ol, op) != -1
           if gl == 'm' | let gl = v:option_type[0] | endif
@@ -314,9 +319,31 @@ function! s:CheckEvent(en) abort
   endif
 endfunction
 
+function! s:CountSynHidden(ln, sc, ec) abort
+  let nh = 0
+  for co in range(a:sc, a:ec)
+    let sc = synconcealed(a:ln, co)
+    if sc[0] == 1 && empty(sc[1]) | let nh += 1 | endif
+  endfor
+  return nh
+endfunction
+
 if has('nvim')
   let s:ns = nvim_create_namespace(s:ww)
   let s:cb = 'wrapwidth_cb'
+
+  function! s:CountTSHidden(ln, sc, ec) abort
+    let nh = 0
+    for co in range(a:sc, a:ec)
+      for ct in v:lua.vim.treesitter.get_captures_at_pos(0, a:ln - 1, co - 1)
+        if type(ct.metadata) == type({}) &&
+                \has_key(ct.metadata, 'conceal') && empty(ct.metadata.conceal)
+          let nh += 1
+        endif
+      endfor
+    endfor
+    return nh
+  endfunction
 
   function! s:SetListener(bn, on) abort
     let bw = getbufvar(a:bn, s:ww)

@@ -1,16 +1,16 @@
 " wrapwidth.vim : Wraps long lines virtually at a specific column
 "
-" Last Change: 2024/03/19
-" Version:     3.4
+" Last Change: 2025/08/07
+" Version:     3.5
 " Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
-" Copyright:   (c) 2023-2024 by Rick Howe
+" Copyright:   (c) 2023-2025 by Rick Howe
 " License:     MIT
 
 if exists('g:loaded_wrapwidth') ||
             \!(has('textprop') && has('patch-9.0.0917') || has('nvim-0.10.0'))
   finish
 endif
-let g:loaded_wrapwidth = 3.4
+let g:loaded_wrapwidth = 3.5
 
 let s:save_cpo = &cpoptions
 set cpo&vim

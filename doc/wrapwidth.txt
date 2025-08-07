@@ -1,9 +1,9 @@
 *wrapwidth.txt* Wraps long lines virtually at a specific column
 
-Last Change: 2024/03/19
-Version:     3.4
+Last Change: 2025/08/07
+Version:     3.5
 Author:      Rick Howe (Takumi Ohtani) <rdcxy754@ybb.ne.jp>
-Copyright:   (c) 2023-2024 by Rick Howe
+Copyright:   (c) 2023-2025 by Rick Howe
 License:     MIT
 
 -----------------------------------------------------------------------------
@@ -103,6 +103,9 @@ OPTIONS                                                *wrapwidth-options*
 
 -----------------------------------------------------------------------------
 CHANGE HISTORY                                        *wrapwidth-history*
+
+Update : 3.5
+* Fixed to properly wrap a line even if concealed text is included and hidden.
 
 Update : 3.4
 * Improved to allow multi-byte and multi-column characters to use in the
